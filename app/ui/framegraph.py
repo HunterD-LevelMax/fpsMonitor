@@ -95,11 +95,18 @@ class FrameTimeGraph(tk.Canvas):
 
         ceiling = self._ceiling(series)
         if ceiling is None:
-            self.create_text(
-                pad_l, height / 2,
-                text="нет данных: нужен запуск от администратора" if not self.compact else "--",
-                anchor="w", fill=theme.MUTED, font=theme.ui(7 if self.compact else 9),
-            )
+            if self.compact:
+                # keep the frame and the 60 fps guide visible so the HUD area
+                # still reads as a graph before a game starts
+                self._draw_grid(pad_l, pad_t, plot_w, plot_h, PERIOD_60 * 2)
+                self.create_text(pad_l + 6, pad_t + plot_h / 2, text="--", anchor="w",
+                                 fill=theme.DISABLED, font=theme.ui(7))
+            else:
+                self.create_text(
+                    pad_l, height / 2,
+                    text="нет данных: нужен запуск от администратора",
+                    anchor="w", fill=theme.MUTED, font=theme.ui(9),
+                )
             return
 
         self._draw_grid(pad_l, pad_t, plot_w, plot_h, ceiling)

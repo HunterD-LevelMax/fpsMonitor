@@ -582,10 +582,20 @@ class ScrollPage(tk.Frame):
 
     def _on_canvas(self, event) -> None:
         self.canvas.itemconfigure(self._window, width=event.width)
+        self._stretch()
+        self._toggle_bar()
 
     def _on_content(self, _event=None) -> None:
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._stretch()
         self._toggle_bar()
+
+    def _stretch(self) -> None:
+        """Keep the content at least as tall as the viewport, so pages that use
+        fill/expand fill the window instead of leaving a void at the bottom."""
+        needed = self.content.winfo_reqheight()
+        viewport = self.canvas.winfo_height()
+        self.canvas.itemconfigure(self._window, height=max(needed, viewport))
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def _toggle_bar(self) -> None:
         needed = self.content.winfo_reqheight() > self.canvas.winfo_height() + 2

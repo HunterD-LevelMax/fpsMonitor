@@ -127,8 +127,8 @@ class Overlay(tk.Toplevel):
                 font=theme.mono(theme.scaled(value_size, scale), "bold"), anchor="e",
             )
             name.grid(row=row, column=0, sticky="w", padx=(0, theme.scaled(14, scale)),
-                      pady=1)
-            value.grid(row=row, column=1, sticky="e", pady=1)
+                      pady=theme.scaled(1, scale))
+            value.grid(row=row, column=1, sticky="e", pady=theme.scaled(1, scale))
             self._rows[key] = (name, value)
             row += 1
 

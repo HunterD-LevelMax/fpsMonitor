@@ -234,23 +234,27 @@ class Dashboard:
         top.pack(fill="x")
 
         hero = widgets.Surface(top, fill=theme.SURFACE, padding=theme.SPACE_4,
-                               width=232, height=112)
+                               width=300, height=142)
         hero.pack(side="left")
-        hero_head = tk.Frame(hero.body, bg=theme.SURFACE)
-        hero_head.pack(fill="x")
-        tk.Label(hero_head, text="ТЕКУЩИЙ FPS", bg=theme.SURFACE, fg=theme.MUTED,
-                 font=theme.ui(theme.FS_SMALL, "bold")).pack(side="left")
+        tk.Label(hero.body, text="ТЕКУЩИЙ FPS", bg=theme.SURFACE, fg=theme.MUTED,
+                 font=theme.ui(theme.FS_SMALL, "bold"), anchor="w").pack(fill="x")
+
+        hero_row = tk.Frame(hero.body, bg=theme.SURFACE)
+        hero_row.pack(fill="x", pady=(theme.SPACE_1, 0))
+        self._hero_fps = tk.Label(hero_row, text="--", bg=theme.SURFACE, fg=theme.OK,
+                                  font=theme.mono(28, "bold"))
+        self._hero_fps.pack(side="left")
+        tk.Label(hero_row, text="кадр/с", bg=theme.SURFACE, fg=theme.MUTED,
+                 font=theme.ui(theme.FS_BODY)).pack(side="left", padx=(5, 0), pady=(9, 0))
+
+        self._hero_caption = tk.Label(hero.body, text="", bg=theme.SURFACE, fg=theme.FG_2,
+                                      font=theme.mono(theme.FS_SMALL), anchor="w",
+                                      justify="left")
+        self._hero_caption.pack(fill="x", pady=(theme.SPACE_1, theme.SPACE_2))
+
         self._hero_graph = FrameTimeGraph(hero.body, window_s=30, compact=True,
                                           scale="60", height=30)
-        self._hero_graph.pack(fill="x", pady=(2, 0))
-        hero_row = tk.Frame(hero.body, bg=theme.SURFACE)
-        hero_row.pack(fill="x")
-        self._hero_fps = tk.Label(hero_row, text="--", bg=theme.SURFACE, fg=theme.OK,
-                                  font=theme.mono(30, "bold"))
-        self._hero_fps.pack(side="left")
-        self._hero_caption = tk.Label(hero_row, text="", bg=theme.SURFACE, fg=theme.MUTED,
-                                      font=theme.ui(theme.FS_CAPTION), anchor="w")
-        self._hero_caption.pack(side="left", padx=(6, 0), pady=(10, 0))
+        self._hero_graph.pack(fill="x", side="bottom")
 
         tiles = tk.Frame(top, bg=theme.BG)
         tiles.pack(side="left", fill="both", expand=True, padx=(theme.SPACE_3, 0))
@@ -346,7 +350,7 @@ class Dashboard:
             widgets.SectionTitle(column, title, fill=theme.SURFACE, top=0)
             for key in keys:
                 row = widgets.StatRow(column, label_of(key), fill=theme.SURFACE)
-                row.pack(fill="x", pady=1)
+                row.pack(fill="x", pady=3)
                 self._value_rows[key] = row
 
     def _build_overlay_page(self) -> None:
@@ -371,7 +375,7 @@ class Dashboard:
             self._row_vars[key] = var
             holder = tk.Frame(grid, bg=theme.SURFACE)
             holder.grid(row=index % per_column, column=index // per_column, sticky="ew",
-                        pady=1)
+                        pady=4, padx=(0, theme.SPACE_3))
             row = widgets.SwitchRow(holder, label_of(key), var, self._on_rows_changed,
                                     fill=theme.SURFACE)
             row.pack(fill="x")
@@ -594,9 +598,9 @@ class Dashboard:
             parts.append(f"{values['frametime']:.2f} мс")
         if values.get("fps_low") is not None:
             parts.append(f"1% low {values['fps_low']:.0f}")
-        if text.get("proc_text"):
-            parts.append(text["proc_text"])
-        self._hero_caption.configure(text="\n".join(parts) if parts else "нет данных")
+        if values.get("fps_low01") is not None:
+            parts.append(f"0.1% {values['fps_low01']:.0f}")
+        self._hero_caption.configure(text="  ·  ".join(parts) if parts else "нет данных")
         if self.overlay.series_provider:
             try:
                 self._hero_graph.redraw(self.overlay.series_provider(30), None)
