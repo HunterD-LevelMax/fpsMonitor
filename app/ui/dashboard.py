@@ -47,12 +47,12 @@ CORNERS = [
 ]
 
 SENSOR_COLUMNS: list[tuple[str, list[str]]] = [
-    ("Кадры", ["fps", "fps_low", "fps_low01", "frametime", "frametime_min",
-               "frametime_max", "frametime_display", "stutters", "frames_window"]),
-    ("Процессор", ["cpu_load", "cpu_temp", "cpu_clock", "cpu_power", "ram_load", "ram_used"]),
-    ("Видеокарта", ["gpu_load", "gpu_temp", "gpu_hotspot", "gpu_vram", "gpu_power",
-                    "gpu_clock", "gpu_fan"]),
-    ("Приложение", ["proc_text", "proc_cpu"]),
+    ("Frames", ["fps", "fps_low", "fps_low01", "frametime", "frametime_min",
+                "frametime_max", "frametime_display", "stutters", "frames_window"]),
+    ("CPU", ["cpu_load", "cpu_temp", "cpu_clock", "cpu_power", "ram_load", "ram_used"]),
+    ("GPU", ["gpu_load", "gpu_temp", "gpu_hotspot", "gpu_vram", "gpu_power",
+             "gpu_clock", "gpu_fan"]),
+    ("App", ["proc_text", "proc_cpu"]),
 ]
 
 
@@ -263,9 +263,9 @@ class Dashboard:
 
         tiles = top
         specs = [
-            ("cpu_load", "ЦПУ", "%"), ("cpu_temp", "ЦПУ темп", "°C"),
-            ("gpu_load", "ГПУ", "%"), ("gpu_temp", "ГПУ темп", "°C"),
-            ("ram_load", "ОЗУ", "%"),
+            ("cpu_load", "CPU", "%"), ("cpu_temp", "CPU temp", "°C"),
+            ("gpu_load", "GPU", "%"), ("gpu_temp", "GPU temp", "°C"),
+            ("ram_load", "RAM", "%"),
         ]
         for index, (key, label, unit) in enumerate(specs):
             tile = widgets.KpiTile(tiles, label, unit, min_width=118)
@@ -275,9 +275,9 @@ class Dashboard:
         graphs = tk.Frame(page, bg=theme.BG)
         graphs.pack(fill="both", expand=True, pady=(theme.SPACE_3, 0))
         plan = [
-            ("Кадры, 30 с", ["fps", "frametime"]),
-            ("Процессор", ["cpu_load", "cpu_temp"]),
-            ("Видеокарта", ["gpu_load", "gpu_temp"]),
+            ("Frames, 30 s", ["fps", "frametime"]),
+            ("CPU", ["cpu_load", "cpu_temp"]),
+            ("GPU", ["gpu_load", "gpu_temp"]),
         ]
         self.graphs = []
         for index, (title, keys) in enumerate(plan):
@@ -294,9 +294,9 @@ class Dashboard:
 
         tiles = tk.Frame(page, bg=theme.BG)
         tiles.pack(fill="x")
-        specs = [("frametime", "Средний кадр", "мс"), ("frametime_min", "Лучший кадр", "мс"),
-                 ("frametime_max", "Худший кадр", "мс"), ("fps_low", "1% low", "FPS"),
-                 ("fps_low01", "0.1% low", "FPS"), ("stutters", "Статтеры", "")]
+        specs = [("frametime", "Frame time", "ms"), ("frametime_min", "Frame min", "ms"),
+                 ("frametime_max", "Frame max", "ms"), ("fps_low", "1% low", "FPS"),
+                 ("fps_low01", "0.1% low", "FPS"), ("stutters", "Stutters", "")]
         for index, (key, label, unit) in enumerate(specs):
             tile = widgets.KpiTile(tiles, label, unit, min_width=118)
             tile.grid(row=0, column=index, sticky="nsew",
@@ -343,9 +343,9 @@ class Dashboard:
         card.content.columnconfigure(2, weight=1)
 
         columns = [
-            SENSOR_COLUMNS[0],                       # кадры
-            ("Процессор и память", SENSOR_COLUMNS[1][1] + SENSOR_COLUMNS[3][1]),
-            SENSOR_COLUMNS[2],                       # видеокарта
+            SENSOR_COLUMNS[0],                       # frames
+            ("CPU & memory", SENSOR_COLUMNS[1][1] + SENSOR_COLUMNS[3][1]),
+            SENSOR_COLUMNS[2],                       # gpu
         ]
         for index, (title, keys) in enumerate(columns):
             column = tk.Frame(card.content, bg=theme.SURFACE)
@@ -748,7 +748,7 @@ class Dashboard:
                                  fg=value_color("fps", fps))
         parts = []
         if values.get("frametime") is not None:
-            parts.append(f"{values['frametime']:.2f} мс")
+            parts.append(f"{values['frametime']:.2f} ms")
         if values.get("fps_low") is not None:
             parts.append(f"1% low {values['fps_low']:.0f}")
         if values.get("fps_low01") is not None:
@@ -786,12 +786,12 @@ class Dashboard:
             colour = value_color(metric, value)
             tile.update_value("--" if value is None else template.format(value), colour)
             caption = {
-                "frametime": "среднее",
-                "frametime_min": "минимум",
-                "frametime_max": "максимум",
-                "fps_low": "худшие 1%",
-                "fps_low01": "худшие 0.1%",
-                "stutters": "> 2× среднего",
+                "frametime": "average",
+                "frametime_min": "minimum",
+                "frametime_max": "maximum",
+                "fps_low": "worst 1%",
+                "fps_low01": "worst 0.1%",
+                "stutters": "> 2× average",
             }.get(metric, "")
             tile.update_caption(caption)
 

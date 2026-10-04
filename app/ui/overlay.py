@@ -49,7 +49,7 @@ class CoreBars(tk.Canvas):
                 self._last = []
                 self.delete("all")
             self.configure(width=170, height=16)
-            self.create_text(0, 1, text="ЦПУ: нет данных", anchor="nw",
+            self.create_text(0, 1, text="CPU: no data", anchor="nw",
                              fill=theme.MUTED, font=theme.ui(theme.FS_CAPTION))
             return
         if self._mode == "physical" and len(cores) >= 2:
@@ -369,7 +369,7 @@ class Overlay:
                 self._assert_topmost()
 
         if self._proc is not None:
-            name = text.get("proc_text") or "нет активного приложения"
+            name = text.get("proc_text") or "no active app"
             if self._last.get("__proc") != name:
                 self._proc.configure(text=name)
                 self._last["__proc"] = name

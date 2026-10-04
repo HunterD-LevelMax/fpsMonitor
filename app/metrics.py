@@ -35,7 +35,7 @@ METRICS: tuple[Metric, ...] = (
     Metric("cpu_temp", "CPU temp", "\u00b0C", "cpu", 0, "#f87171", True),
     Metric("cpu_clock", "CPU clock", "MHz", "cpu", 0, "#93c5fd"),
     Metric("cpu_power", "CPU power", "W", "cpu", 1, "#c084fc"),
-    Metric("cores", "Ядра ЦПУ", "%", "cpu", 0, "#6E8BFF"),
+    Metric("cores", "Cores", "%", "cpu", 0, "#6E8BFF"),
     # ---- gpu ----------------------------------------------------------
     Metric("gpu_load", "GPU", "%", "gpu", 0, "#38bdf8", True),
     Metric("gpu_temp", "GPU temp", "\u00b0C", "gpu", 0, "#fb923c", True),
@@ -71,21 +71,21 @@ METRICS = tuple(
            _PALETTE.get(m.key, m.color), m.default_row)
     for m in METRICS
 )
-# Russian labels; the internal keys stay English so configs and CSVs keep working
+# English labels; the internal keys stay stable so configs and CSVs keep working
 _LABELS = {
-    "fps": "FPS", "fps_avg": "Средний FPS", "fps_low": "1% low", "fps_low01": "0.1% low",
-    "frametime": "Время кадра", "frametime_min": "Лучший кадр",
-    "frametime_max": "Худший кадр", "frametime_display": "Кадр на экране",
-    "stutters": "Статтеры", "frames_window": "Кадров в окне",
-    "frame_graph": "График времени кадра",
-    "cpu_load": "ЦПУ", "cpu_temp": "ЦПУ темп", "cpu_clock": "Частота ЦПУ",
-    "cpu_power": "Мощность ЦПУ", "cpu_load_lhm": "ЦПУ (LHM)",
-    "gpu_load": "ГПУ", "gpu_temp": "ГПУ темп", "gpu_hotspot": "ГПУ hot spot",
-    "gpu_vram": "Видеопамять", "gpu_power": "Мощность ГПУ",
-    "gpu_power_limit": "Лимит мощности", "gpu_clock": "Частота ГПУ",
-    "gpu_fan": "Кулер ГПУ",
-    "ram_load": "ОЗУ", "ram_used": "ОЗУ занято",
-    "proc_text": "Приложение", "proc_cpu": "ЦПУ приложения",
+    "fps": "FPS", "fps_avg": "Avg FPS", "fps_low": "1% low", "fps_low01": "0.1% low",
+    "frametime": "Frame time", "frametime_min": "Frame min",
+    "frametime_max": "Frame max", "frametime_display": "Frame display",
+    "stutters": "Stutters", "frames_window": "Frames",
+    "frame_graph": "Frame time graph",
+    "cpu_load": "CPU", "cpu_temp": "CPU temp", "cpu_clock": "CPU clock",
+    "cpu_power": "CPU power", "cpu_load_lhm": "CPU (LHM)",
+    "gpu_load": "GPU", "gpu_temp": "GPU temp", "gpu_hotspot": "GPU hotspot",
+    "gpu_vram": "VRAM", "gpu_power": "GPU power",
+    "gpu_power_limit": "Power limit", "gpu_clock": "GPU clock",
+    "gpu_fan": "GPU fan",
+    "ram_load": "RAM", "ram_used": "RAM used",
+    "proc_text": "Process", "proc_cpu": "Process CPU",
 }
 METRICS = tuple(
     Metric(m.key, _LABELS.get(m.key, m.label), m.unit, m.group, m.decimals,
@@ -95,9 +95,9 @@ METRICS = tuple(
 METRIC_BY_KEY = {m.key: m for m in METRICS}
 # sensors that only LibreHardwareMonitor / nvidia-smi can provide
 for _extra in (
-    Metric("gpu_hotspot", "ГПУ hot spot", "\u00b0C", "gpu", 0, "#FF9F68"),
-    Metric("gpu_power_limit", "Лимит мощности", "W", "gpu", 0, "#8B98AB"),
-    Metric("cpu_load_max", "Самое занятое ядро", "%", "cpu", 0, "#9BB0FF"),
+    Metric("gpu_hotspot", "GPU hotspot", "\u00b0C", "gpu", 0, "#FF9F68"),
+    Metric("gpu_power_limit", "Power limit", "W", "gpu", 0, "#8B98AB"),
+    Metric("cpu_load_max", "CPU core max", "%", "cpu", 0, "#9BB0FF"),
 ):
     if _extra.key not in METRIC_BY_KEY:
         METRICS = METRICS + (_extra,)
