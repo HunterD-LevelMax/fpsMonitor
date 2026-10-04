@@ -539,6 +539,23 @@ class Dashboard:
                           self._on_header_changed, fill=theme.SURFACE).pack(
             fill="x", pady=(theme.SPACE_1, 0))
 
+        self._color_swatches: dict[str, tuple[tk.Label, tk.Label]] = {}
+        self._color_fields = [
+            ("overlay_value_color", "Значения"),
+            ("overlay_label_color", "Подписи"),
+            ("overlay_fps_color", "Крупный FPS"),
+            ("overlay_header_color", "Заголовок"),
+        ]
+        widgets.SectionTitle(look.content, "Цвета", top=theme.SPACE_3)
+        widgets.WrapLabel(
+            look.content,
+            "Пустой цвет = авто (палитра метрики + красный/жёлтый при превышении порога). "
+            "«Сброс» возвращает автоматический цвет.",
+        ).pack(fill="x", pady=(0, theme.SPACE_1))
+        for field, title in self._color_fields:
+            self._build_color_row(look.content, field, title)
+        self._update_color_swatches()
+
         behaviour = widgets.Card(right, "Поведение", padding=theme.SPACE_5)
         behaviour.pack(fill="x", pady=(theme.SPACE_4, 0))
         self._overlay_var = tk.BooleanVar(value=self.cfg.overlay_enabled)
@@ -954,6 +971,54 @@ class Dashboard:
         self.cfg.overlay_cores_mode = self._cores_mode_var.get()
         self.cfg.save()
         self.overlay.rebuild()
+
+    # -- overlay font colours ------------------------------------------- #
+    def _build_color_row(self, parent: tk.Misc, field: str, title: str) -> None:
+        row = tk.Frame(parent, bg=theme.SURFACE)
+        row.pack(fill="x", pady=theme.SPACE_1)
+        tk.Label(row, text=title, bg=theme.SURFACE, fg=theme.FG,
+                 font=theme.ui(theme.FS_BODY), anchor="w").pack(side="left")
+        widgets.FlatButton(row, "Выбрать", lambda f=field: self._pick_color(f),
+                           variant="secondary").pack(side="right")
+        widgets.FlatButton(row, "Сброс", lambda f=field: self._reset_color(f),
+                           variant="ghost").pack(side="right", padx=(0, theme.SPACE_1))
+        text_label = tk.Label(row, text="", bg=theme.SURFACE, fg=theme.MUTED,
+                              font=theme.mono(theme.FS_CAPTION))
+        text_label.pack(side="right", padx=(0, theme.SPACE_2))
+        swatch = tk.Label(row, text="  ", bg=theme.SURFACE_3,
+                          highlightthickness=1, highlightbackground=theme.BORDER)
+        swatch.pack(side="right", padx=(0, theme.SPACE_2))
+        self._color_swatches[field] = (swatch, text_label)
+
+    def _pick_color(self, field: str) -> None:
+        from tkinter import colorchooser
+
+        titles = dict(self._color_fields)
+        result = colorchooser.askcolor(
+            color=getattr(self.cfg, field, "") or None,
+            parent=self.root, title="Цвет — " + titles.get(field, field),
+        )
+        if result and result[1]:
+            setattr(self.cfg, field, result[1])
+            self.cfg.save()
+            self.overlay.rebuild()
+            self._update_color_swatches()
+
+    def _reset_color(self, field: str) -> None:
+        setattr(self.cfg, field, "")
+        self.cfg.save()
+        self.overlay.rebuild()
+        self._update_color_swatches()
+
+    def _update_color_swatches(self) -> None:
+        for field, (swatch, text_label) in getattr(self, "_color_swatches", {}).items():
+            value = getattr(self.cfg, field, "")
+            if value:
+                swatch.configure(bg=value)
+                text_label.configure(text=value)
+            else:
+                swatch.configure(bg=theme.SURFACE_3)
+                text_label.configure(text="авто")
 
     def _on_scale(self) -> None:
         new_scale = round(self._scale_var.get(), 2)

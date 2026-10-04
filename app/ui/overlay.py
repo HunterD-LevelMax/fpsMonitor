@@ -171,7 +171,8 @@ class Overlay:
         if self.cfg.overlay_show_header:
             header = tk.Frame(self._body, bg=key)
             header.grid(row=row, column=0, columnspan=2, sticky="ew")
-            tk.Label(header, text="FPS MONITOR", bg=key, fg=theme.ACCENT,
+            tk.Label(header, text="FPS MONITOR", bg=key,
+                     fg=self.cfg.overlay_header_color or theme.ACCENT,
                      font=theme.ui(theme.scaled(theme.FS_CAPTION, scale), "bold"),
                      ).pack(side="left")
             self._proc = tk.Label(header, text="", bg=key, fg=theme.MUTED,
@@ -186,7 +187,8 @@ class Overlay:
         if "fps" in rows:
             hero = tk.Frame(self._body, bg=key)
             hero.grid(row=row, column=0, columnspan=2, sticky="w")
-            self._hero = tk.Label(hero, text="--", bg=key, fg=color_of("fps"),
+            self._hero = tk.Label(hero, text="--", bg=key,
+                                  fg=self.cfg.overlay_fps_color or color_of("fps"),
                                   font=theme.mono(theme.scaled(22, scale), "bold"))
             self._hero.pack(side="left")
             tk.Label(hero, text="FPS", bg=key, fg=theme.MUTED,
@@ -233,11 +235,12 @@ class Overlay:
             name = tk.Label(
                 self._body,
                 text=label_of(key_name) if self.cfg.overlay_labels else "",
-                bg=key, fg=theme.MUTED,
+                bg=key, fg=self.cfg.overlay_label_color or theme.MUTED,
                 font=theme.ui(theme.scaled(value_size, scale)), anchor="w",
             )
             value = tk.Label(
-                self._body, text="--", bg=key, fg=color_of(key_name),
+                self._body, text="--", bg=key,
+                fg=self.cfg.overlay_value_color or color_of(key_name),
                 font=theme.mono(theme.scaled(value_size, scale), "bold"), anchor="e",
             )
             padx = theme.scaled(12, scale) if self.cfg.overlay_labels else 0
@@ -375,7 +378,10 @@ class Overlay:
             fps = values.get("fps")
             rendered = f"{fps:.0f}" if fps is not None else "--"
             if self._last.get("fps") != rendered:
-                self._hero.configure(text=rendered, fg=value_color("fps", fps))
+                self._hero.configure(
+                    text=rendered,
+                    fg=self.cfg.overlay_fps_color or value_color("fps", fps),
+                )
                 self._last["fps"] = rendered
 
         if self._inline is not None:
@@ -393,9 +399,11 @@ class Overlay:
 
         for key_name, (_, value_label) in self._rows.items():
             rendered = format_value(key_name, values, text) or "--"
-            if self._last.get(key_name) != rendered:
-                value_label.configure(text=rendered)
+            fg = self.cfg.overlay_value_color or value_color(key_name, values.get(key_name))
+            if self._last.get(key_name) != rendered or self._last.get(key_name + "!fg") != fg:
+                value_label.configure(text=rendered, fg=fg)
                 self._last[key_name] = rendered
+                self._last[key_name + "!fg"] = fg
 
         if self._cores is not None:
             self._cores.redraw(self.state.cores(), self.cfg.overlay_cores_mode)

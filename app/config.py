@@ -48,6 +48,11 @@ class Config:
     overlay_separators: bool = False  # thin lines between the rows
     overlay_fps_inline: bool = True   # avg / 1% / 0.1% next to the big FPS
     overlay_cores_mode: str = "physical"  # physical | logical
+    # font colours (empty = automatic: metric palette + threshold alerts)
+    overlay_value_color: str = ""
+    overlay_label_color: str = ""
+    overlay_fps_color: str = ""
+    overlay_header_color: str = ""
     hide_hint_shown: bool = False
 
     # --- hotkeys (modifiers+key, e.g. "ctrl+alt+o") ---
