@@ -4,6 +4,10 @@
 **температура и загрузка CPU**, **температура, загрузка, VRAM, мощность и частоты GPU**,
 **оперативная память** — в компактном оверлее поверх игры и в отдельном окне с графиками.
 
+**Скачать готовую сборку:**
+[FpsMonitor-portable.zip](https://github.com/HunterD-LevelMax/fpsMonitor/releases/latest/download/FpsMonitor-portable.zip) —
+распаковать и запустить `Запуск.cmd`. Python и что-либо ещё устанавливать не нужно.
+
 Проверено на: Windows 11 (26100), AMD Ryzen 7 5700X, NVIDIA GeForce RTX 4070, Python 3.14.
 
 ![Окно приложения](docs/dashboard-example.png)
