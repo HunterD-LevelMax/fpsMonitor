@@ -90,10 +90,12 @@ class Surface(tk.Canvas):
 
     def __init__(self, master: tk.Misc, *, bg: str = theme.BG, fill: str = theme.SURFACE,
                  border: str | None = theme.BORDER, radius: int = theme.RADIUS,
-                 padding: int = theme.SPACE_4, height: int | None = None, **kwargs) -> None:
+                 padding: int = theme.SPACE_4, height: int | None = None,
+                 min_height: int = 0, **kwargs) -> None:
         self._auto_height = height is None
+        self._min_height = min_height
         options = dict(kwargs)
-        options["height"] = 12 if height is None else height
+        options["height"] = max(min_height, 12) if height is None else height
         super().__init__(master, bg=bg, highlightthickness=0, bd=0, **options)
         self._bg = bg
         self._fill = fill
@@ -107,7 +109,7 @@ class Surface(tk.Canvas):
             self.body.bind("<Configure>", self._grow)
 
     def _grow(self, _event=None) -> None:
-        needed = self.body.winfo_reqheight() + 2 * self._padding
+        needed = max(self._min_height, self.body.winfo_reqheight() + 2 * self._padding)
         if needed > self.winfo_height() + 1:
             self.configure(height=needed)
 
@@ -165,19 +167,23 @@ class Divider(tk.Frame):
 
 # ------------------------------------------------------------------ tiles --
 class KpiTile(Surface):
-    """Big number, label above, caption below - the classic KPI card."""
+    """Big number, label above, caption below - the classic KPI card.
+
+    Height is never fixed: the tile grows with its text, and the grid it lives
+    in equalises the row, so a longer caption can not clip or overlap anything.
+    """
 
     def __init__(self, master: tk.Misc, label: str, unit: str = "", *,
-                 min_width: int = 150, height: int = 96, **kwargs) -> None:
+                 min_width: int = 150, min_height: int = 108, **kwargs) -> None:
         super().__init__(master, fill=theme.SURFACE, padding=theme.SPACE_4,
-                         width=min_width, height=height, **kwargs)
+                         width=min_width, min_height=min_height, **kwargs)
         fill = self.fill
         self.label = tk.Label(self.body, text=label.upper(), bg=fill, fg=theme.MUTED,
                               font=theme.ui(theme.FS_SMALL, "bold"), anchor="w")
         self.label.pack(fill="x")
 
         row = tk.Frame(self.body, bg=fill)
-        row.pack(fill="x")
+        row.pack(fill="x", pady=(theme.SPACE_2, 0))
         self.value = tk.Label(row, text="--", bg=fill, fg=theme.FG,
                               font=theme.mono(20, "bold"), anchor="w")
         self.value.pack(side="left")
@@ -186,8 +192,10 @@ class KpiTile(Surface):
         self.unit.pack(side="left", padx=(3, 0), pady=(6, 0))
 
         self.caption = tk.Label(self.body, text="", bg=fill, fg=theme.MUTED,
-                                font=theme.ui(theme.FS_CAPTION), anchor="w")
-        self.caption.pack(fill="x")
+                                font=theme.ui(theme.FS_CAPTION), anchor="w",
+                                justify="left",
+                                wraplength=max(60, min_width - 2 * theme.SPACE_4))
+        self.caption.pack(side="bottom", fill="x", pady=(theme.SPACE_2, 0))
 
     def update_value(self, text: str, colour: str | None = None) -> None:
         self.value.configure(text=text, fg=colour or theme.FG)
@@ -288,6 +296,11 @@ class FlatButton(tk.Canvas):
     def set_text(self, text: str) -> None:
         self._text = text
         self._draw()
+
+    def set_variant(self, variant: str) -> None:
+        if variant != self._variant:
+            self._variant = variant
+            self._draw()
 
     def set_enabled(self, enabled: bool) -> None:
         self._enabled = enabled
@@ -423,23 +436,27 @@ class SwitchRow(tk.Frame):
         super().__init__(master, bg=fill)
         self.columnconfigure(0, weight=1)
         text = tk.Frame(self, bg=fill)
-        text.grid(row=0, column=0, sticky="w")
+        text.grid(row=0, column=0, sticky="w", pady=theme.SPACE_1)
         tk.Label(text, text=label, bg=fill, fg=theme.FG, font=theme.ui(theme.FS_BODY),
                  anchor="w").pack(anchor="w")
         if hint:
             tk.Label(text, text=hint, bg=fill, fg=theme.MUTED,
                      font=theme.ui(theme.FS_CAPTION), anchor="w",
-                     justify="left").pack(anchor="w")
+                     justify="left").pack(anchor="w", pady=(2, 0))
         self.switch = Switch(self, variable, command, bg=fill)
         self.switch.grid(row=0, column=1, sticky="e", padx=(theme.SPACE_4, 0))
 
 
 class Slider(tk.Canvas):
-    """Custom track + knob slider (tk.Scale looks dated)."""
+    """Custom track + knob slider (tk.Scale looks dated).
+
+    The value is printed above the track, so the widget needs vertical room:
+    34 px by default, which also keeps it clear of the section title above.
+    """
 
     def __init__(self, master: tk.Misc, variable: tk.DoubleVar, low: float, high: float,
                  command: Callable[[], None] | None = None, *, bg: str = theme.SURFACE,
-                 width: int = 220, height: int = 24, fmt: str = "{:.2f}") -> None:
+                 width: int = 220, height: int = 34, fmt: str = "{:.2f}") -> None:
         super().__init__(master, bg=bg, highlightthickness=0, bd=0,
                          width=width, height=height, cursor="hand2")
         self._variable = variable
@@ -486,19 +503,18 @@ class Slider(tk.Canvas):
         if width < 20:
             return
         pad = 10
-        y = height / 2
+        y = height - 12
         usable = max(1, width - 2 * pad)
         fraction = self._fraction()
         knob_x = pad + usable * fraction
+        self.create_text(pad, 7, text=self._fmt.format(float(self._variable.get())),
+                         anchor="w", fill=theme.MUTED, font=theme.ui(theme.FS_SMALL))
         round_rect(self, pad, y - 2, pad + usable, y + 2, 2,
                    fill=theme.SURFACE_3, outline="")
         round_rect(self, pad, y - 2, max(pad + 4, knob_x), y + 2, 2,
                    fill=theme.ACCENT, outline="")
         self.create_oval(knob_x - 7, y - 7, knob_x + 7, y + 7,
                          fill=theme.GRAY_100, outline=theme.BORDER_STRONG, width=1)
-        value = theme.ui(theme.FS_SMALL)
-        self.create_text(pad, y - 11, text=self._fmt.format(float(self._variable.get())),
-                         anchor="w", fill=theme.MUTED, font=value)
 
 
 class SidebarNav(tk.Frame):
@@ -609,6 +625,24 @@ class ScrollPage(tk.Frame):
         if not self.bar.winfo_manager():
             return
         self.canvas.yview_scroll(steps * 3, "units")
+
+
+class WrapLabel(tk.Label):
+    """Label that wraps at its own width, so long hints never overflow a card."""
+
+    def __init__(self, master: tk.Misc, text: str = "", *, fill: str = theme.SURFACE,
+                 fg: str = theme.MUTED, font: tuple | None = None, min_wrap: int = 160,
+                 **kwargs) -> None:
+        super().__init__(master, text=text, bg=fill, fg=fg,
+                         font=font or theme.ui(theme.FS_CAPTION),
+                         anchor="w", justify="left", wraplength=min_wrap, **kwargs)
+        self._min_wrap = min_wrap
+        self.bind("<Configure>", self._rewrap)
+
+    def _rewrap(self, event) -> None:
+        wrap = max(self._min_wrap, event.width)
+        if abs(int(self.cget("wraplength")) - wrap) > 4:
+            self.configure(wraplength=wrap)
 
 
 class SectionTitle(tk.Label):

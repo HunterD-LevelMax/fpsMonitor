@@ -79,6 +79,10 @@ def run(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="FpsMonitor", description="FPS / temperature overlay")
     parser.add_argument("--no-overlay", action="store_true", help="не показывать оверлей")
     parser.add_argument("--hidden", action="store_true", help="запустить только оверлей")
+    parser.add_argument("--page", default="monitor",
+                        choices=["monitor", "frames", "sensors", "overlay", "settings",
+                                 "diagnostics"],
+                        help="страница, которую открыть при запуске")
     args = parser.parse_args(argv)
 
     if not _single_instance():
@@ -107,7 +111,7 @@ def run(argv: list[str] | None = None) -> int:
     root = tk.Tk()
     root.title("FPS Monitor")
     root.geometry("1280x780")
-    root.minsize(1080, 660)
+    root.minsize(1140, 700)
     root.configure(bg=theme.BG)
     try:
         root.iconbitmap(default=str(ICON_PATH))
@@ -157,6 +161,10 @@ def run(argv: list[str] | None = None) -> int:
 
     dashboard = Dashboard(root, config, state, sampler, overlay, on_quit=shutdown,
                           tray=tray if tray_ok else None)
+    # dragging the HUD switches it to "custom corner" - keep the settings in sync
+    overlay.on_change = dashboard.sync_overlay_controls
+    if args.page != "monitor":
+        dashboard.show_page(args.page)
     if args.hidden:
         root.withdraw()
 

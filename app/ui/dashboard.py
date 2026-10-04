@@ -35,6 +35,9 @@ from .framegraph import FrameTimeGraph
 from .graph import Graph
 from .overlay import Overlay
 
+CORNER_GLYPHS = [("top-left", "↖"), ("top-right", "↗"),
+                 ("bottom-left", "↙"), ("bottom-right", "↘")]
+
 CORNERS = [
     ("top-left", "Слева в."),
     ("top-right", "Справа в."),
@@ -232,10 +235,12 @@ class Dashboard:
 
         top = tk.Frame(page, bg=theme.BG)
         top.pack(fill="x")
+        top.columnconfigure(0, weight=0)
+        for column in range(1, 6):
+            top.columnconfigure(column, weight=1)
 
-        hero = widgets.Surface(top, fill=theme.SURFACE, padding=theme.SPACE_4,
-                               width=300, height=142)
-        hero.pack(side="left")
+        hero = widgets.Surface(top, fill=theme.SURFACE, padding=theme.SPACE_4, width=300)
+        hero.grid(row=0, column=0, sticky="nsew", padx=(0, theme.SPACE_3))
         tk.Label(hero.body, text="ТЕКУЩИЙ FPS", bg=theme.SURFACE, fg=theme.MUTED,
                  font=theme.ui(theme.FS_SMALL, "bold"), anchor="w").pack(fill="x")
 
@@ -256,17 +261,15 @@ class Dashboard:
                                           scale="60", height=30)
         self._hero_graph.pack(fill="x", side="bottom")
 
-        tiles = tk.Frame(top, bg=theme.BG)
-        tiles.pack(side="left", fill="both", expand=True, padx=(theme.SPACE_3, 0))
+        tiles = top
         specs = [
             ("cpu_load", "ЦПУ", "%"), ("cpu_temp", "ЦПУ темп", "°C"),
             ("gpu_load", "ГПУ", "%"), ("gpu_temp", "ГПУ темп", "°C"),
             ("ram_load", "ОЗУ", "%"),
         ]
         for index, (key, label, unit) in enumerate(specs):
-            tile = widgets.KpiTile(tiles, label, unit, min_width=118, height=112)
-            tile.grid(row=0, column=index, sticky="nsew", padx=(0, theme.SPACE_2))
-            tiles.columnconfigure(index, weight=1)
+            tile = widgets.KpiTile(tiles, label, unit, min_width=118)
+            tile.grid(row=0, column=index + 1, sticky="nsew", padx=(0, theme.SPACE_2))
             self._kpis[key] = tile
 
         graphs = tk.Frame(page, bg=theme.BG)
@@ -295,8 +298,9 @@ class Dashboard:
                  ("frametime_max", "Худший кадр", "мс"), ("fps_low", "1% low", "FPS"),
                  ("fps_low01", "0.1% low", "FPS"), ("stutters", "Статтеры", "")]
         for index, (key, label, unit) in enumerate(specs):
-            tile = widgets.KpiTile(tiles, label, unit, min_width=120, height=100)
-            tile.grid(row=0, column=index, sticky="nsew", padx=(0, theme.SPACE_3))
+            tile = widgets.KpiTile(tiles, label, unit, min_width=118)
+            tile.grid(row=0, column=index, sticky="nsew",
+                      padx=(0, theme.SPACE_2), pady=(theme.SPACE_1, 0))
             tiles.columnconfigure(index, weight=1)
             self._kpis[f"frame_{key}"] = tile
 
@@ -323,12 +327,12 @@ class Dashboard:
                                           mode=self.cfg.frame_graph_mode,
                                           scale=self.cfg.frame_graph_scale, height=300)
         self.frame_graph.pack(fill="both", expand=True)
-        tk.Label(card.content,
-                 text="Каждый кадр рисуется отдельно; несколько кадров в одном пикселе "
-                      "схлопываются в худший, поэтому просадки не сглаживаются. "
-                      "Зелёный пунктир — 60 FPS, янтарный — 30 FPS.",
-                 bg=theme.SURFACE, fg=theme.MUTED, font=theme.ui(theme.FS_CAPTION),
-                 anchor="w", justify="left").pack(fill="x", pady=(theme.SPACE_2, 0))
+        widgets.WrapLabel(
+            card.content,
+            "Каждый кадр рисуется отдельно; несколько кадров в одном пикселе "
+            "схлопываются в худший, поэтому просадки не сглаживаются. "
+            "Зелёный пунктир — 60 FPS, янтарный — 30 FPS.",
+        ).pack(fill="x", pady=(theme.SPACE_2, 0))
 
     def _build_sensors(self) -> None:
         page = self._page("sensors", "Датчики", "Все метрики, которые собирает приложение")
@@ -353,6 +357,80 @@ class Dashboard:
                 row.pack(fill="x", pady=3)
                 self._value_rows[key] = row
 
+    # ------------------------------------------------------------------ #
+    # overlay rows: visibility and order
+    # ------------------------------------------------------------------ #
+    def _redraw_rows_editor(self) -> None:
+        holder = self._rows_holder
+        for child in holder.winfo_children():
+            child.destroy()
+
+        visible = [key for key in self.cfg.overlay_rows if key in OVERLAY_CHOICES]
+        if visible != self.cfg.overlay_rows:  # drop unknown keys from old configs
+            self.cfg.overlay_rows = visible
+            self.cfg.save()
+
+        for index, key in enumerate(visible):
+            row = tk.Frame(holder, bg=theme.SURFACE)
+            row.pack(fill="x", pady=theme.SPACE_1)
+
+            variable = tk.BooleanVar(value=True)
+            widgets.Switch(row, variable, lambda k=key: self._set_row_visible(k, False),
+                           bg=theme.SURFACE).pack(side="left")
+
+            tk.Label(row, text=label_of(key), bg=theme.SURFACE, fg=theme.FG,
+                     font=theme.ui(theme.FS_BODY), anchor="w").pack(
+                side="left", padx=(theme.SPACE_3, 0))
+
+            down = widgets.FlatButton(row, "▼", lambda k=key: self._move_row(k, 1),
+                                      width=32, height=24)
+            down.pack(side="right")
+            up = widgets.FlatButton(row, "▲", lambda k=key: self._move_row(k, -1),
+                                    width=32, height=24)
+            up.pack(side="right", padx=(0, theme.SPACE_1))
+            if index == 0:
+                up.set_enabled(False)
+            if index == len(visible) - 1:
+                down.set_enabled(False)
+
+        hidden = [key for key in OVERLAY_CHOICES if key not in visible]
+        if not hidden:
+            return
+        widgets.Divider(holder).pack(fill="x", pady=(theme.SPACE_3, 0))
+        widgets.SectionTitle(holder, "Скрытые", fill=theme.SURFACE)
+        grid = tk.Frame(holder, bg=theme.SURFACE)
+        grid.pack(fill="x")
+        grid.columnconfigure(0, weight=1)
+        grid.columnconfigure(1, weight=1)
+        for position, key in enumerate(hidden):
+            widgets.FlatButton(grid, "+  " + label_of(key),
+                               lambda k=key: self._set_row_visible(k, True)).grid(
+                row=position // 2, column=position % 2, sticky="ew", padx=2, pady=3)
+
+    def _set_row_visible(self, key: str, visible: bool) -> None:
+        rows = [item for item in self.cfg.overlay_rows if item != key]
+        if visible:
+            rows.append(key)  # новые строки появляются внизу, дальше их можно двигать
+        self.cfg.overlay_rows = rows
+        self.cfg.save()
+        self.overlay.rebuild()
+        self._redraw_rows_editor()
+
+    def _move_row(self, key: str, delta: int) -> None:
+        rows = list(self.cfg.overlay_rows)
+        if key not in rows:
+            return
+        index = rows.index(key)
+        target = max(0, min(len(rows) - 1, index + delta))
+        if target == index:
+            return
+        rows.pop(index)
+        rows.insert(target, key)
+        self.cfg.overlay_rows = rows
+        self.cfg.save()
+        self.overlay.rebuild()
+        self._redraw_rows_editor()
+
     def _build_overlay_page(self) -> None:
         page = self._page("overlay", "Оверлей", "Что и как показывать поверх игры")
         left = tk.Frame(page, bg=theme.BG)
@@ -362,59 +440,70 @@ class Dashboard:
 
         rows_card = widgets.Card(left, "Строки оверлея", padding=theme.SPACE_4)
         rows_card.pack(fill="x")
-        self._row_vars: dict[str, tk.BooleanVar] = {}
-        grid = rows_card.content
-        grid.columnconfigure(0, weight=1)
-        grid.columnconfigure(1, weight=1)
-        grid.columnconfigure(2, weight=1)
+        widgets.WrapLabel(
+            rows_card.content,
+            "Порядок строк — сверху вниз, как в оверлее. Стрелки перемещают строку, "
+            "переключатель убирает её из оверлея.",
+        ).pack(fill="x", pady=(0, theme.SPACE_3))
+        self._rows_holder = tk.Frame(rows_card.content, bg=theme.SURFACE)
+        self._rows_holder.pack(fill="x")
+        self._redraw_rows_editor()
 
-        ordered = [key for key in OVERLAY_CHOICES]
-        per_column = (len(ordered) + 2) // 3
-        for index, key in enumerate(ordered):
-            var = tk.BooleanVar(value=key in self.cfg.overlay_rows)
-            self._row_vars[key] = var
-            holder = tk.Frame(grid, bg=theme.SURFACE)
-            holder.grid(row=index % per_column, column=index // per_column, sticky="ew",
-                        pady=4, padx=(0, theme.SPACE_3))
-            row = widgets.SwitchRow(holder, label_of(key), var, self._on_rows_changed,
-                                    fill=theme.SURFACE)
-            row.pack(fill="x")
-
-        place = widgets.Card(right, "Размещение", padding=theme.SPACE_4)
+        place = widgets.Card(right, "Размещение", padding=theme.SPACE_5)
         place.pack(fill="x")
         self._corner_var = tk.StringVar(value=self.cfg.overlay_corner)
-        widgets.Segmented(place.content, CORNERS, self._corner_var, self._on_corner_changed,
-                          bg=theme.SURFACE_2, fill=theme.SURFACE).pack(anchor="w")
+        widgets.WrapLabel(
+            place.content,
+            "Куда прижать оверлей. «Своё место» — перетащите мышью при выключенном "
+            "пропуске кликов.",
+        ).pack(fill="x", pady=(0, theme.SPACE_2))
 
-        look = widgets.Card(right, "Вид", padding=theme.SPACE_4)
-        look.pack(fill="x", pady=(theme.SPACE_3, 0))
+        corners = tk.Frame(place.content, bg=theme.SURFACE)
+        corners.pack(anchor="w")
+        self._corner_buttons: dict[str, widgets.FlatButton] = {}
+        for index, (value, glyph) in enumerate(CORNER_GLYPHS):
+            button = widgets.FlatButton(corners, glyph,
+                                        lambda v=value: self._set_corner(v),
+                                        width=48, height=34)
+            button.grid(row=index // 2, column=index % 2, padx=3, pady=3)
+            self._corner_buttons[value] = button
+        custom = widgets.FlatButton(place.content, "Своё место (перетащить)",
+                                    lambda: self._set_corner("custom"))
+        custom.pack(anchor="w", pady=(theme.SPACE_2, 0))
+        self._corner_buttons["custom"] = custom
+        self._paint_corners()
+
+        look = widgets.Card(right, "Вид", padding=theme.SPACE_5)
+        look.pack(fill="x", pady=(theme.SPACE_4, 0))
         self._alpha_var = tk.DoubleVar(value=self.cfg.overlay_alpha)
         self._scale_var = tk.DoubleVar(value=self.cfg.overlay_scale)
         widgets.SectionTitle(look.content, "Прозрачность", fill=theme.SURFACE, top=0)
         widgets.Slider(look.content, self._alpha_var, 0.2, 1.0, self._on_alpha,
-                       bg=theme.SURFACE, width=250).pack(fill="x")
-        widgets.SectionTitle(look.content, "Масштаб текста")
+                       bg=theme.SURFACE, width=250).pack(fill="x",
+                                                         pady=(theme.SPACE_1, theme.SPACE_2))
+        widgets.SectionTitle(look.content, "Масштаб текста", top=theme.SPACE_2)
         widgets.Slider(look.content, self._scale_var, 0.7, 2.0, self._on_scale,
-                       bg=theme.SURFACE, width=250).pack(fill="x")
+                       bg=theme.SURFACE, width=250).pack(fill="x",
+                                                         pady=(theme.SPACE_1, theme.SPACE_2))
         self._header_var = tk.BooleanVar(value=self.cfg.overlay_show_header)
         widgets.SwitchRow(look.content, "Заголовок и имя приложения", self._header_var,
                           self._on_header_changed,
-                          fill=theme.SURFACE).pack(fill="x", pady=(theme.SPACE_3, 0))
+                          fill=theme.SURFACE).pack(fill="x", pady=(theme.SPACE_2, 0))
 
-        behaviour = widgets.Card(right, "Поведение", padding=theme.SPACE_4)
-        behaviour.pack(fill="x", pady=(theme.SPACE_3, 0))
+        behaviour = widgets.Card(right, "Поведение", padding=theme.SPACE_5)
+        behaviour.pack(fill="x", pady=(theme.SPACE_4, 0))
         self._overlay_var = tk.BooleanVar(value=self.cfg.overlay_enabled)
         widgets.SwitchRow(behaviour.content, "Показывать оверлей", self._overlay_var,
                           self._on_overlay_toggle, hint="Ctrl+Alt+O",
-                          fill=theme.SURFACE).pack(fill="x", pady=2)
+                          fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
         self._click_var = tk.BooleanVar(value=self.cfg.overlay_click_through)
         widgets.SwitchRow(behaviour.content, "Пропускать клики сквозь оверлей",
                           self._click_var, self._on_click_changed, hint="Ctrl+Alt+L",
-                          fill=theme.SURFACE).pack(fill="x", pady=2)
-        tk.Label(behaviour.content,
-                 text="Чтобы передвинуть оверлей, выключите пропуск кликов и перетащите его.",
-                 bg=theme.SURFACE, fg=theme.MUTED, font=theme.ui(theme.FS_CAPTION),
-                 wraplength=250, justify="left").pack(anchor="w", pady=(theme.SPACE_2, 0))
+                          fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
+        widgets.WrapLabel(
+            behaviour.content,
+            "Чтобы передвинуть оверлей, выключите пропуск кликов и перетащите его.",
+        ).pack(fill="x", pady=(theme.SPACE_3, 0))
 
     def _build_settings(self) -> None:
         page = self._page("settings", "Настройки", "Периоды опроса, источники и запись")
@@ -446,11 +535,11 @@ class Dashboard:
                           self._lhm_var, self._on_lhm_toggle,
                           hint="LibreHardwareMonitor, требует прав администратора",
                           fill=theme.SURFACE).pack(fill="x")
-        tk.Label(sources.content,
-                 text="FPS читается через PresentMon (ETW), метрики NVIDIA — через "
-                      "nvidia-smi из драйвера, загрузка CPU и ОЗУ — через psutil.",
-                 bg=theme.SURFACE, fg=theme.MUTED, font=theme.ui(theme.FS_CAPTION),
-                 wraplength=420, justify="left").pack(anchor="w", pady=(theme.SPACE_2, 0))
+        widgets.WrapLabel(
+            sources.content,
+            "FPS читается через PresentMon (ETW), метрики NVIDIA — через nvidia-smi "
+            "из драйвера, загрузка CPU и ОЗУ — через psutil.",
+        ).pack(fill="x", pady=(theme.SPACE_2, 0))
 
         logging = widgets.Card(right, "Запись в CSV", padding=theme.SPACE_4)
         logging.pack(fill="x")
@@ -486,16 +575,15 @@ class Dashboard:
 
         banner = widgets.Surface(left, fill=theme.SURFACE, padding=theme.SPACE_3, height=58)
         banner.pack(fill="x", pady=(0, theme.SPACE_3))
-        self._elevation_text = tk.Label(banner.body, text="", bg=theme.SURFACE, fg=theme.WARN,
-                                        font=theme.ui(theme.FS_BODY), anchor="w",
-                                        justify="left", wraplength=520)
+        self._elevation_text = widgets.WrapLabel(
+            banner.body, "", fg=theme.WARN, font=theme.ui(theme.FS_BODY), min_wrap=200)
         self._elevation_text.pack(fill="x")
 
         sources = widgets.Card(left, "Источники", padding=theme.SPACE_4)
         sources.pack(fill="x")
         for _ in range(4):
             row = tk.Frame(sources.content, bg=theme.SURFACE)
-            row.pack(fill="x", pady=3)
+            row.pack(fill="x", pady=theme.SPACE_1 + 1)
             name = tk.Label(row, text="", bg=theme.SURFACE, fg=theme.FG,
                             font=theme.ui(theme.FS_BODY, "bold"), width=24, anchor="w")
             name.pack(side="left")
@@ -509,9 +597,8 @@ class Dashboard:
 
         cpu_card = widgets.Card(left, "Датчики процессора", padding=theme.SPACE_4)
         cpu_card.pack(fill="x", pady=(theme.SPACE_3, 0))
-        self._cpu_temp_label = tk.Label(cpu_card.content, text="", bg=theme.SURFACE,
-                                        fg=theme.FG_2, font=theme.ui(theme.FS_BODY),
-                                        justify="left", anchor="w", wraplength=520)
+        self._cpu_temp_label = widgets.WrapLabel(
+            cpu_card.content, "", fg=theme.FG_2, font=theme.ui(theme.FS_BODY), min_wrap=200)
         self._cpu_temp_label.pack(fill="x", pady=(0, theme.SPACE_3))
         cpu_buttons = tk.Frame(cpu_card.content, bg=theme.SURFACE)
         cpu_buttons.pack(fill="x")
@@ -525,13 +612,12 @@ class Dashboard:
 
         paths = widgets.Card(right, "Расположение и действия", padding=theme.SPACE_4)
         paths.pack(fill="x")
-        self._error_label = tk.Label(paths.content, text="", bg=theme.SURFACE, fg=theme.ERR,
-                                     font=theme.ui(theme.FS_CAPTION), justify="left",
-                                     anchor="w", wraplength=420)
+        self._error_label = widgets.WrapLabel(
+            paths.content, "", fg=theme.ERR, min_wrap=200)
         self._error_label.pack(fill="x")
         self._paths_label = tk.Label(paths.content, text="", bg=theme.SURFACE, fg=theme.MUTED,
                                      font=theme.mono(theme.FS_CAPTION), justify="left",
-                                     anchor="w", wraplength=420)
+                                     anchor="w")
         self._paths_label.pack(fill="x", pady=(theme.SPACE_2, theme.SPACE_3))
         buttons = tk.Frame(paths.content, bg=theme.SURFACE)
         buttons.pack(fill="x")
@@ -548,22 +634,23 @@ class Dashboard:
 
         help_card = widgets.Card(right, "Если данных нет", padding=theme.SPACE_4)
         help_card.pack(fill="both", expand=True, pady=(theme.SPACE_3, 0))
-        tk.Label(help_card.content,
-                 text="• Нет FPS — приложение запущено без прав администратора. "
-                      "Закройте его и запустите FpsMonitor.cmd, подтвердите UAC.\n"
-                      "• Нет температуры CPU — либо нет прав, либо Windows блокирует "
-                      "драйвер WinRing0; нажмите «Установить драйвер (PawnIO)».\n"
-                      "• Нет метрик GPU — нужен драйвер NVIDIA (nvidia-smi).\n"
-                      "• Окно пропало — приложение свёрнуто: значок в трее рядом с часами, "
-                      "левый клик открывает окно, правый даёт меню с выходом.",
-                 bg=theme.SURFACE, fg=theme.FG_2, font=theme.ui(theme.FS_SMALL),
-                 justify="left", anchor="w", wraplength=420).pack(fill="x")
+        widgets.WrapLabel(
+            help_card.content,
+            "• Нет FPS — приложение запущено без прав администратора. "
+            "Закройте его и запустите FpsMonitor.cmd, подтвердите UAC.\n"
+            "• Нет температуры CPU — либо нет прав, либо Windows блокирует "
+            "драйвер WinRing0; нажмите «Установить драйвер (PawnIO)».\n"
+            "• Нет метрик GPU — нужен драйвер NVIDIA (nvidia-smi).\n"
+            "• Окно пропало — приложение свёрнуто: значок в трее рядом с часами, "
+            "левый клик открывает окно, правый даёт меню с выходом.",
+            font=theme.ui(theme.FS_SMALL), fg=theme.FG_2,
+        ).pack(fill="x")
 
     # ------------------------------------------------------------------ #
     def _spin(self, parent: tk.Misc, title: str, value, low, high, step, command,
               floating: bool = False) -> None:
         row = tk.Frame(parent, bg=theme.SURFACE)
-        row.pack(fill="x", pady=3)
+        row.pack(fill="x", pady=theme.SPACE_1 + 1)
         tk.Label(row, text=title, bg=theme.SURFACE, fg=theme.FG_2,
                  font=theme.ui(theme.FS_BODY), anchor="w").pack(side="left")
         var = tk.StringVar(value=str(value))
@@ -633,12 +720,12 @@ class Dashboard:
             colour = value_color(metric, value)
             tile.update_value("--" if value is None else template.format(value), colour)
             caption = {
-                "frametime": "среднее за окно",
-                "frametime_min": "самый быстрый",
-                "frametime_max": "самый долгий",
-                "fps_low": "худшие 1% кадров",
-                "fps_low01": "худшие 0.1% кадров",
-                "stutters": "кадры > 2× среднего",
+                "frametime": "среднее",
+                "frametime_min": "минимум",
+                "frametime_max": "максимум",
+                "fps_low": "худшие 1%",
+                "fps_low01": "худшие 0.1%",
+                "stutters": "> 2× среднего",
             }.get(metric, "")
             tile.update_caption(caption)
 
@@ -758,15 +845,21 @@ class Dashboard:
         if source is not None and hasattr(source, "set_pinned"):
             source.set_pinned(self._proc_index.get(self._proc_box.get()))
 
-    def _on_rows_changed(self) -> None:
-        self.cfg.overlay_rows = [key for key in OVERLAY_CHOICES if self._row_vars[key].get()]
-        self.cfg.save()
-        self.overlay.rebuild()
+    def _set_corner(self, value: str) -> None:
+        self._corner_var.set(value)
+        self._on_corner_changed()
+
+    def _paint_corners(self) -> None:
+        """Highlight the chosen corner button."""
+        current = self.cfg.overlay_corner
+        for value, button in getattr(self, "_corner_buttons", {}).items():
+            button.set_variant("primary" if value == current else "secondary")
 
     def _on_corner_changed(self) -> None:
         self.cfg.overlay_corner = self._corner_var.get()
         self.cfg.save()
         self.overlay.place()
+        self._paint_corners()
 
     def _on_alpha(self) -> None:
         self.cfg.overlay_alpha = round(self._alpha_var.get(), 2)
@@ -904,9 +997,11 @@ class Dashboard:
                 self.on_quit()
 
     def sync_overlay_controls(self) -> None:
-        """Reflect config changes made through hotkeys."""
+        """Reflect config changes made through hotkeys or by dragging the HUD."""
         self._overlay_var.set(self.cfg.overlay_enabled)
         self._click_var.set(self.cfg.overlay_click_through)
+        self._corner_var.set(self.cfg.overlay_corner)
+        self._paint_corners()
 
     # ------------------------------------------------------------------ #
     def _open(self, path: Path) -> None:
