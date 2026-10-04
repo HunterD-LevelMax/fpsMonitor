@@ -1,0 +1,14 @@
+# Build artefacts and runtime state - not part of the source
+
+dist/
+logs/
+config.json
+__pycache__/
+*.pyc
+*.pyo
+
+# Third-party binaries are downloaded by the scripts in tools/:
+#   python tools\fetch_vendor.py   -> vendor/ (PresentMon, LibreHardwareMonitor)
+#   python tools\fetch_psutil.py   -> libs/ (psutil)
+vendor/
+libs/
