@@ -18,6 +18,12 @@ WS_EX_TRANSPARENT = 0x00000020
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_NOACTIVATE = 0x08000000
 
+HWND_TOPMOST = -1
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+SWP_NOACTIVATE = 0x0010
+SWP_SHOWWINDOW = 0x0040
+
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 MOD_ALT = 0x0001
@@ -101,6 +107,26 @@ def make_tool_window(hwnd: int) -> None:
     style = _GetWindowLongPtr(wintypes.HWND(hwnd), GWL_EXSTYLE)
     style |= WS_EX_TOOLWINDOW | WS_EX_LAYERED
     _SetWindowLongPtr(wintypes.HWND(hwnd), GWL_EXSTYLE, style)
+
+
+def raise_topmost(hwnd: int) -> None:
+    """Push a window back to the top of the Z-order without stealing focus.
+
+    Games love to call SetWindowPos(HWND_TOPMOST) on their own window when they
+    grab focus, which buries the overlay. Tk's ``-topmost`` is not re-applied,
+    so this is the reliable, no-activate way to stay above a fullscreen game.
+    """
+    user32.SetWindowPos.argtypes = [
+        wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+        ctypes.c_int, ctypes.c_int, wintypes.UINT,
+    ]
+    user32.SetWindowPos.restype = wintypes.BOOL
+    user32.SetWindowPos(
+        wintypes.HWND(hwnd),
+        wintypes.HWND(HWND_TOPMOST),
+        0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+    )
 
 
 def set_dpi_awareness() -> None:

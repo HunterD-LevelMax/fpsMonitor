@@ -275,6 +275,15 @@ class Overlay:
         self.hud.lift()
         self._hwnds = []
         self.master.after(60, self.apply_click_through)
+        self._assert_topmost()
+
+    def _assert_topmost(self) -> None:
+        """Bump both windows back above any game that pushed itself on top."""
+        for hwnd in self._hwnds or self._collect_hwnds():
+            try:
+                winutil.raise_topmost(hwnd)
+            except Exception:
+                pass
 
     def hide(self) -> None:
         self.hud.withdraw()
@@ -338,15 +347,13 @@ class Overlay:
     def refresh(self) -> None:
         values, text, _ = self.state.snapshot()
 
-        if time.monotonic() - self._topmost_checked > 4.0:
+        # Games that run in borderless fullscreen still push themselves to the
+        # top of the Z-order when they take focus, so the topmost flag is
+        # re-asserted every half second (Win32 SetWindowPos, no focus steal).
+        if time.monotonic() - self._topmost_checked > 0.5:
             self._topmost_checked = time.monotonic()
             if self.cfg.overlay_enabled and self.hud.winfo_viewable():
-                try:
-                    self.panel.attributes("-topmost", True)
-                    self.hud.attributes("-topmost", True)
-                    self.hud.lift()
-                except tk.TclError:
-                    pass
+                self._assert_topmost()
 
         if self._proc is not None:
             name = text.get("proc_text") or "нет активного приложения"
