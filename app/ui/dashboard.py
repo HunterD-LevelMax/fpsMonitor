@@ -568,7 +568,8 @@ class Dashboard:
                           fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
         widgets.WrapLabel(
             behaviour.content,
-            "Чтобы передвинуть оверлей, выключите пропуск кликов и перетащите его.",
+            "Чтобы передвинуть оверлей: выключите «Пропускать клики», потяните за панель "
+            "(или за текст), затем включите пропуск кликов обратно.",
         ).pack(fill="x", pady=(theme.SPACE_3, 0))
 
     def _build_settings(self) -> None:

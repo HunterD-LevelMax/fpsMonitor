@@ -122,6 +122,11 @@ class Overlay:
 
         self._panel_canvas = tk.Canvas(self.panel, bg=self._key, highlightthickness=0, bd=0)
         self._panel_canvas.pack(fill="both", expand=True)
+        # The values window has a colour-keyed (click-through) background, so its
+        # empty areas pass mouse events on to whatever is behind. The container
+        # window's rounded rect is opaque to the pointer, which makes the whole
+        # panel a grab handle for dragging - bind the drag here too.
+        self._bind_drag(self._panel_canvas)
 
         self._body = tk.Frame(self.hud, bg=self._key)
         self._body.pack(fill="both", expand=True)

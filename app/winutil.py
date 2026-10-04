@@ -21,7 +21,9 @@ WS_EX_NOACTIVATE = 0x08000000
 HWND_TOPMOST = -1
 SWP_NOSIZE = 0x0001
 SWP_NOMOVE = 0x0002
+SWP_NOZORDER = 0x0004
 SWP_NOACTIVATE = 0x0010
+SWP_FRAMECHANGED = 0x0020
 SWP_SHOWWINDOW = 0x0040
 
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
@@ -100,6 +102,12 @@ def set_click_through(hwnd: int, enabled: bool) -> None:
         style &= ~(WS_EX_TRANSPARENT | WS_EX_NOACTIVATE)
         style |= WS_EX_LAYERED | WS_EX_TOOLWINDOW
     _SetWindowLongPtr(wintypes.HWND(hwnd), GWL_EXSTYLE, style)
+    # the ex-style change must be re-applied to the window for hit-testing to
+    # pick it up immediately - without SWP_FRAMECHANGED the toggle can lag
+    user32.SetWindowPos(
+        wintypes.HWND(hwnd), None, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED | SWP_NOACTIVATE,
+    )
 
 
 def make_tool_window(hwnd: int) -> None:
