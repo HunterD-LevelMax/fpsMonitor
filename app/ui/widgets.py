@@ -285,8 +285,12 @@ class FlatButton(tk.Canvas):
         self._pressed = False
         self._enabled = True
         self._font = theme.ui(theme.FS_BODY, "bold")
-        if width:
-            self.configure(width=width)
+        self._auto_width = width is None
+        if width is None:
+            # size to the label plus comfortable horizontal padding, so a button
+            # never renders its text flush against the rounded edge
+            width = tkfont.Font(font=self._font).measure(text) + 2 * theme.SPACE_3
+        self.configure(width=width)
         self.bind("<Configure>", lambda _e: self._draw())
         self.bind("<Enter>", self._on_enter)
         self.bind("<Leave>", self._on_leave)
@@ -295,6 +299,8 @@ class FlatButton(tk.Canvas):
 
     def set_text(self, text: str) -> None:
         self._text = text
+        if self._auto_width:
+            self.configure(width=tkfont.Font(font=self._font).measure(text) + 2 * theme.SPACE_3)
         self._draw()
 
     def set_variant(self, variant: str) -> None:
