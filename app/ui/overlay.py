@@ -106,6 +106,7 @@ class Overlay:
         self._last: dict[str, str] = {}
         self._cores: CoreBars | None = None
         self._hwnds: list[int] = []
+        self._last_size: tuple[int, int] | None = None
 
         self.panel = tk.Toplevel(master)
         self.hud = tk.Toplevel(master)
@@ -143,7 +144,7 @@ class Overlay:
                            fill=self.cfg.overlay_container_color, outline=outline, width=1)
         canvas.configure(width=width, height=height)
         self.panel.attributes("-alpha", max(0.05, min(1.0, self.cfg.overlay_container_alpha)))
-        self.panel.deiconify()
+        # visibility is owned by show()/hide(), not by a repaint
 
     # ------------------------------------------------------------------ #
     def rebuild(self) -> None:
@@ -325,8 +326,7 @@ class Overlay:
         self.hud.update_idletasks()
         width = self._body.winfo_reqwidth()
         height = self._body.winfo_reqheight()
-        scale = self.cfg.overlay_scale
-        margin = theme.scaled(PADDING.get(self.cfg.overlay_padding, 8), scale)
+        self._last_size = (width, height)
         screen_w, screen_h = winutil.virtual_screen_size()
         x, y = self.cfg.overlay_x, self.cfg.overlay_y
         corner = self.cfg.overlay_corner
@@ -338,10 +338,20 @@ class Overlay:
             x = screen_w - width - x
             y = screen_h - height - y
         x, y = max(0, x), max(0, y)
-        self.hud.geometry(f"+{x}+{y}")
-        panel_w, panel_h = width + 2 * margin, height + 2 * margin
-        self.panel.geometry(f"{panel_w}x{panel_h}+{x - margin}+{y - margin}")
-        self._paint_panel(panel_w, panel_h)
+        # the body already carries its own padding (overlay_padding), so the
+        # container hugs the values exactly instead of adding a second margin
+        self.hud.geometry(f"{width}x{height}+{x}+{y}")
+        self.panel.geometry(f"{width}x{height}+{x}+{y}")
+        self._paint_panel(width, height)
+
+    def _fit_if_needed(self) -> None:
+        """The values change length as data arrives; keep the container fitted."""
+        if not self.cfg.overlay_enabled:
+            return
+        self.hud.update_idletasks()
+        size = (self._body.winfo_reqwidth(), self._body.winfo_reqheight())
+        if size != getattr(self, "_last_size", None):
+            self.place()
 
     # ------------------------------------------------------------------ #
     def refresh(self) -> None:
@@ -400,6 +410,10 @@ class Overlay:
                 except Exception:
                     pass
 
+        # never re-fit mid-drag, but otherwise keep the container snug
+        if self._drag_origin is None:
+            self._fit_if_needed()
+
     # ------------------------------------------------------------------ #
     def _persist(self) -> None:
         self.cfg.save()
@@ -425,9 +439,8 @@ class Overlay:
         start_x, start_y, win_x, win_y = self._drag_origin
         new_x = win_x + event.x_root - start_x
         new_y = win_y + event.y_root - start_y
-        margin = theme.scaled(PADDING.get(self.cfg.overlay_padding, 8), self.cfg.overlay_scale)
         self.hud.geometry(f"+{new_x}+{new_y}")
-        self.panel.geometry(f"+{new_x - margin}+{new_y - margin}")
+        self.panel.geometry(f"+{new_x}+{new_y}")
 
     def _drag_end(self, event) -> None:
         if self._drag_origin is None:
