@@ -970,6 +970,13 @@ class Dashboard:
 
     # ------------------------------------------------------------------ #
     def hide_window(self, hint: bool = True) -> None:
+        # remember the size the user picked before the window goes away
+        try:
+            if self.root.state() == "normal":
+                self.cfg.window_geometry = self.root.winfo_geometry()
+                self.cfg.save()
+        except tk.TclError:
+            pass
         self.root.withdraw()
         if hint and not self.cfg.hide_hint_shown:
             self.cfg.hide_hint_shown = True

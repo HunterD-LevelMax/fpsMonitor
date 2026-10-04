@@ -579,31 +579,30 @@ class SidebarNav(tk.Frame):
 
 
 class ScrollPage(tk.Frame):
-    """Page container that scrolls when its content is taller than the window."""
+    """Page container that scrolls with the mouse wheel when the content is
+    taller than the window.
+
+    There is deliberately no scrollbar: the window is meant to be resized by
+    hand, and the bar only eats horizontal space and distracts.
+    """
 
     def __init__(self, master: tk.Misc, *, bg: str = theme.BG) -> None:
         super().__init__(master, bg=bg)
         self._bg = bg
-        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0)
+        self.canvas = tk.Canvas(self, bg=bg, highlightthickness=0, bd=0,
+                                yscrollincrement=24)
         self.canvas.pack(side="left", fill="both", expand=True)
-        self.bar = tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.content = tk.Frame(self.canvas, bg=bg)
         self._window = self.canvas.create_window(0, 0, window=self.content, anchor="nw")
-        self.canvas.configure(yscrollcommand=self._on_scrollbar)
         self.canvas.bind("<Configure>", self._on_canvas)
         self.content.bind("<Configure>", self._on_content)
-
-    def _on_scrollbar(self, first: str, last: str) -> None:
-        self.bar.set(first, last)
 
     def _on_canvas(self, event) -> None:
         self.canvas.itemconfigure(self._window, width=event.width)
         self._stretch()
-        self._toggle_bar()
 
     def _on_content(self, _event=None) -> None:
         self._stretch()
-        self._toggle_bar()
 
     def _stretch(self) -> None:
         """Keep the content at least as tall as the viewport, so pages that use
@@ -612,17 +611,11 @@ class ScrollPage(tk.Frame):
         viewport = self.canvas.winfo_height()
         self.canvas.itemconfigure(self._window, height=max(needed, viewport))
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _toggle_bar(self) -> None:
-        needed = self.content.winfo_reqheight() > self.canvas.winfo_height() + 2
-        if needed and not self.bar.winfo_manager():
-            self.bar.pack(side="right", fill="y")
-        elif not needed and self.bar.winfo_manager():
-            self.bar.pack_forget()
+        if needed <= viewport + 2:
             self.canvas.yview_moveto(0)
 
     def scroll_by(self, steps: int) -> None:
-        if not self.bar.winfo_manager():
+        if self.content.winfo_reqheight() <= self.canvas.winfo_height() + 2:
             return
         self.canvas.yview_scroll(steps * 3, "units")
 

@@ -24,6 +24,10 @@ DEFAULT_ROWS = [
 
 @dataclass
 class Config:
+    # --- window ---
+    window_geometry: str = ""      # размер и позиция, запоминаются при выходе
+    window_zoomed: bool = False
+
     # --- overlay ---
     overlay_enabled: bool = True
     overlay_corner: str = "top-left"  # top-left | top-right | bottom-left | bottom-right | custom

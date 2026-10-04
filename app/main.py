@@ -110,7 +110,14 @@ def run(argv: list[str] | None = None) -> int:
 
     root = tk.Tk()
     root.title("FPS Monitor")
-    root.geometry("1280x780")
+    # the window size is the user's choice - remember it between runs
+    if config.window_geometry:
+        try:
+            root.geometry(config.window_geometry)
+        except tk.TclError:
+            root.geometry("1280x780")
+    else:
+        root.geometry("1280x780")
     root.minsize(1140, 700)
     root.configure(bg=theme.BG)
     try:
@@ -142,10 +149,22 @@ def run(argv: list[str] | None = None) -> int:
     tray = TrayIcon(ICON_PATH, "FPS Monitor", tray_menu)
     tray_ok = tray.start()
 
+    def remember_geometry() -> None:
+        """Store the window size/position the user chose."""
+        try:
+            if root.state() == "normal":
+                geometry = root.winfo_geometry()
+                if geometry and not geometry.startswith("1x1"):
+                    config.window_geometry = geometry
+                    config.save()
+        except tk.TclError:
+            pass
+
     def shutdown() -> None:
         if flags["closing"]:
             return
         flags["closing"] = True
+        remember_geometry()
         try:
             sampler.stop()
             hotkeys.stop()
@@ -161,6 +180,13 @@ def run(argv: list[str] | None = None) -> int:
 
     dashboard = Dashboard(root, config, state, sampler, overlay, on_quit=shutdown,
                           tray=tray if tray_ok else None)
+    # re-apply the saved size now that the layout knows how wide it wants to be
+    if config.window_geometry:
+        try:
+            root.update_idletasks()
+            root.geometry(config.window_geometry)
+        except tk.TclError:
+            pass
     # dragging the HUD switches it to "custom corner" - keep the settings in sync
     overlay.on_change = dashboard.sync_overlay_controls
     if args.page != "monitor":
