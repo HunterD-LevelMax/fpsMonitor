@@ -43,6 +43,7 @@ class Sampler(threading.Thread):
                 vendor_dir / "PresentMon",
                 fps_window=self.config.fps_window_s,
                 low_window=self.config.low_fps_window_s,
+                avg_window=self.config.avg_fps_window_s,
             ),
             SystemSource(self.ctx),
         ]
@@ -106,6 +107,7 @@ class Sampler(threading.Thread):
         values: dict[str, float | None] = {}
         text: dict[str, str] = {}
         status: dict[str, tuple[str, str]] = {}
+        cores: list[float] = []
 
         for src in self._sources:
             state, message = src.status()
@@ -115,9 +117,12 @@ class Sampler(threading.Thread):
                 values.setdefault(key, value)
             for key, value in report.text.items():
                 text.setdefault(key, value)
+            extra_cores = report.extra.get("cpu_cores")
+            if extra_cores:
+                cores = list(extra_cores)
 
         self._apply_fallbacks(values)
-        self.state.publish(values, text, status)
+        self.state.publish(values, text, status, cores=cores)
         if self.logger.active:
             self.logger.write(values, text)
 

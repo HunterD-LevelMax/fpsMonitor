@@ -475,20 +475,69 @@ class Dashboard:
 
         look = widgets.Card(right, "Вид", padding=theme.SPACE_5)
         look.pack(fill="x", pady=(theme.SPACE_4, 0))
-        self._alpha_var = tk.DoubleVar(value=self.cfg.overlay_alpha)
+
+        self._container_var = tk.BooleanVar(value=self.cfg.overlay_container)
+        widgets.SwitchRow(look.content, "Контейнер (фон)", self._container_var,
+                          self._on_container_toggle, hint="подложка под значениями",
+                          fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
+
+        self._container_alpha_var = tk.DoubleVar(value=self.cfg.overlay_container_alpha)
+        widgets.SectionTitle(look.content, "Прозрачность контейнера", fill=theme.SURFACE,
+                             top=theme.SPACE_2)
+        widgets.Slider(look.content, self._container_alpha_var, 0.05, 1.0,
+                       self._on_container_alpha, bg=theme.SURFACE, width=250).pack(
+            fill="x", pady=(theme.SPACE_1, theme.SPACE_2))
+
         self._scale_var = tk.DoubleVar(value=self.cfg.overlay_scale)
-        widgets.SectionTitle(look.content, "Прозрачность", fill=theme.SURFACE, top=0)
-        widgets.Slider(look.content, self._alpha_var, 0.2, 1.0, self._on_alpha,
-                       bg=theme.SURFACE, width=250).pack(fill="x",
-                                                         pady=(theme.SPACE_1, theme.SPACE_2))
         widgets.SectionTitle(look.content, "Масштаб текста", top=theme.SPACE_2)
         widgets.Slider(look.content, self._scale_var, 0.7, 2.0, self._on_scale,
-                       bg=theme.SURFACE, width=250).pack(fill="x",
-                                                         pady=(theme.SPACE_1, theme.SPACE_2))
+                       bg=theme.SURFACE, width=250).pack(
+            fill="x", pady=(theme.SPACE_1, theme.SPACE_2))
+
+        self._padding_var = tk.StringVar(value=self.cfg.overlay_padding)
+        widgets.SectionTitle(look.content, "Отступы", top=theme.SPACE_2)
+        widgets.Segmented(look.content,
+                          [("sm", "Малые"), ("md", "Средние"), ("lg", "Большие")],
+                          self._padding_var, self._on_padding_changed,
+                          bg=theme.SURFACE_2, fill=theme.SURFACE).pack(
+            anchor="w", pady=(theme.SPACE_1, theme.SPACE_2))
+
+        self._radius_var = tk.StringVar(value=self.cfg.overlay_radius)
+        widgets.SectionTitle(look.content, "Скругление", top=theme.SPACE_2)
+        widgets.Segmented(look.content,
+                          [("sm", "S"), ("md", "M"), ("lg", "L")],
+                          self._radius_var, self._on_radius_changed,
+                          bg=theme.SURFACE_2, fill=theme.SURFACE).pack(
+            anchor="w", pady=(theme.SPACE_1, theme.SPACE_2))
+
+        self._cores_mode_var = tk.StringVar(value=self.cfg.overlay_cores_mode)
+        widgets.SectionTitle(look.content, "Ядра ЦПУ", top=theme.SPACE_2)
+        widgets.Segmented(look.content,
+                          [("physical", "Физические"), ("logical", "Логические")],
+                          self._cores_mode_var, self._on_cores_mode_changed,
+                          bg=theme.SURFACE_2, fill=theme.SURFACE).pack(
+            anchor="w", pady=(theme.SPACE_1, theme.SPACE_2))
+
+        self._border_var = tk.BooleanVar(value=self.cfg.overlay_border)
+        widgets.SwitchRow(look.content, "Рамка контейнера", self._border_var,
+                          self._on_border_changed, fill=theme.SURFACE).pack(
+            fill="x", pady=theme.SPACE_1)
+        self._labels_var = tk.BooleanVar(value=self.cfg.overlay_labels)
+        widgets.SwitchRow(look.content, "Подписи датчиков", self._labels_var,
+                          self._on_labels_changed, hint="выключите для компактного вида",
+                          fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
+        self._separators_var = tk.BooleanVar(value=self.cfg.overlay_separators)
+        widgets.SwitchRow(look.content, "Разделители между строками", self._separators_var,
+                          self._on_separators_changed, fill=theme.SURFACE).pack(
+            fill="x", pady=theme.SPACE_1)
+        self._inline_var = tk.BooleanVar(value=self.cfg.overlay_fps_inline)
+        widgets.SwitchRow(look.content, "Средний и 1% рядом с FPS", self._inline_var,
+                          self._on_inline_changed, hint="avg · 1% · 0.1% возле счётчика",
+                          fill=theme.SURFACE).pack(fill="x", pady=theme.SPACE_1)
         self._header_var = tk.BooleanVar(value=self.cfg.overlay_show_header)
         widgets.SwitchRow(look.content, "Заголовок и имя приложения", self._header_var,
-                          self._on_header_changed,
-                          fill=theme.SURFACE).pack(fill="x", pady=(theme.SPACE_2, 0))
+                          self._on_header_changed, fill=theme.SURFACE).pack(
+            fill="x", pady=(theme.SPACE_1, 0))
 
         behaviour = widgets.Card(right, "Поведение", padding=theme.SPACE_5)
         behaviour.pack(fill="x", pady=(theme.SPACE_4, 0))
@@ -861,10 +910,50 @@ class Dashboard:
         self.overlay.place()
         self._paint_corners()
 
-    def _on_alpha(self) -> None:
-        self.cfg.overlay_alpha = round(self._alpha_var.get(), 2)
-        self.overlay.attributes("-alpha", self.cfg.overlay_alpha)
+    def _on_container_toggle(self) -> None:
+        self.cfg.overlay_container = self._container_var.get()
         self.cfg.save()
+        self.overlay.apply_container()
+
+    def _on_container_alpha(self) -> None:
+        self.cfg.overlay_container_alpha = round(self._container_alpha_var.get(), 2)
+        self.cfg.save()
+        self.overlay.apply_container()
+
+    def _on_border_changed(self) -> None:
+        self.cfg.overlay_border = self._border_var.get()
+        self.cfg.save()
+        self.overlay.apply_container()
+
+    def _on_radius_changed(self) -> None:
+        self.cfg.overlay_radius = self._radius_var.get()
+        self.cfg.save()
+        self.overlay.apply_container()
+
+    def _on_padding_changed(self) -> None:
+        self.cfg.overlay_padding = self._padding_var.get()
+        self.cfg.save()
+        self.overlay.rebuild()
+
+    def _on_labels_changed(self) -> None:
+        self.cfg.overlay_labels = self._labels_var.get()
+        self.cfg.save()
+        self.overlay.rebuild()
+
+    def _on_separators_changed(self) -> None:
+        self.cfg.overlay_separators = self._separators_var.get()
+        self.cfg.save()
+        self.overlay.rebuild()
+
+    def _on_inline_changed(self) -> None:
+        self.cfg.overlay_fps_inline = self._inline_var.get()
+        self.cfg.save()
+        self.overlay.rebuild()
+
+    def _on_cores_mode_changed(self) -> None:
+        self.cfg.overlay_cores_mode = self._cores_mode_var.get()
+        self.cfg.save()
+        self.overlay.rebuild()
 
     def _on_scale(self) -> None:
         new_scale = round(self._scale_var.get(), 2)
@@ -1009,7 +1098,6 @@ class Dashboard:
         self._click_var.set(self.cfg.overlay_click_through)
         self._corner_var.set(self.cfg.overlay_corner)
         self._paint_corners()
-
     # ------------------------------------------------------------------ #
     def _open(self, path: Path) -> None:
         try:

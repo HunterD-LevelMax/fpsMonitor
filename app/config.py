@@ -33,11 +33,21 @@ class Config:
     overlay_corner: str = "top-left"  # top-left | top-right | bottom-left | bottom-right | custom
     overlay_x: int = 16
     overlay_y: int = 16
-    overlay_alpha: float = 0.80
     overlay_scale: float = 1.0
     overlay_click_through: bool = True
     overlay_rows: list[str] = field(default_factory=lambda: list(DEFAULT_ROWS))
     overlay_show_header: bool = True
+    # container: the translucent backdrop behind the values (values stay opaque)
+    overlay_container: bool = True
+    overlay_container_alpha: float = 0.55
+    overlay_container_color: str = "#0B0D12"
+    overlay_border: bool = True
+    overlay_radius: str = "lg"        # sm | md | lg
+    overlay_padding: str = "md"       # sm | md | lg
+    overlay_labels: bool = True       # metric names next to the values
+    overlay_separators: bool = False  # thin lines between the rows
+    overlay_fps_inline: bool = True   # avg / 1% / 0.1% next to the big FPS
+    overlay_cores_mode: str = "physical"  # physical | logical
     hide_hint_shown: bool = False
 
     # --- hotkeys (modifiers+key, e.g. "ctrl+alt+o") ---
@@ -51,6 +61,7 @@ class Config:
     graph_window_s: int = 120
     fps_window_s: float = 1.0
     low_fps_window_s: float = 10.0
+    avg_fps_window_s: float = 10.0
 
     # --- frame time graph ---
     frame_graph_window_s: int = 10
@@ -83,6 +94,9 @@ class Config:
             for key, value in raw.items():
                 if key in known and value is not None:
                     setattr(cfg, key, value)
+            # old name of the container opacity: migrate it, never lose a choice
+            if "overlay_container_alpha" not in raw and "overlay_alpha" in raw:
+                cfg.overlay_container_alpha = float(raw["overlay_alpha"])
             cfg.overlay_rows = [r for r in cfg.overlay_rows if isinstance(r, str)]
         return cfg
 

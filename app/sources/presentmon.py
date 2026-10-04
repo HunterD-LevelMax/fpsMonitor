@@ -208,12 +208,14 @@ class PresentMonSource(Source):
     interval = 0.2  # five updates per second keeps the HUD feeling live
 
     def __init__(self, ctx: Context, vendor_dir: Path, sticky_seconds: float = 6.0,
-                 fps_window: float = 1.0, low_window: float = 10.0) -> None:
+                 fps_window: float = 1.0, low_window: float = 10.0,
+                 avg_window: float = 10.0) -> None:
         super().__init__(ctx)
         self.vendor_dir = Path(vendor_dir)
         self.sticky_seconds = sticky_seconds
         self.fps_window = fps_window
         self.low_window = low_window
+        self.avg_window = avg_window
 
         self.exe: Path | None = self._locate()
         self.session_name = SESSION_NAME
@@ -467,6 +469,14 @@ class PresentMonSource(Source):
         values["frametime_min"] = min(present_times)
         values["frametime_max"] = max(present_times)
         values["frames_window"] = float(len(frames))
+
+        # "average FPS" over a longer horizon than the live window - the classic
+        # second number that FPS monitors show next to the current rate
+        avg_times = [f.present for f in chains[key] if f.t >= newest_t - self.avg_window * 1000.0]
+        if len(avg_times) > 5:
+            avg_mean = fmean(avg_times)
+            if avg_mean > 0:
+                values["fps_avg"] = 1000.0 / avg_mean
 
         low_times = [
             f.present for f in chains[key] if f.t >= newest_t - self.low_window * 1000.0

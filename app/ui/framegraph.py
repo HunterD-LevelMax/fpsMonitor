@@ -54,9 +54,10 @@ class FrameTimeGraph(tk.Canvas):
     def __init__(self, master: tk.Misc, window_s: int = 10, mode: str = "frametime",
                  scale: str = "auto", compact: bool = False, height: int = 220,
                  **kwargs) -> None:
+        bg = kwargs.pop("bg", theme.PANEL if not compact else theme.BG)
         super().__init__(
             master,
-            bg=theme.PANEL if not compact else theme.BG,
+            bg=bg,
             highlightthickness=0 if compact else 1,
             highlightbackground=theme.BORDER,
             height=height,

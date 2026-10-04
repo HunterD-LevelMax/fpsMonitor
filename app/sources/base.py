@@ -25,6 +25,8 @@ class SourceReport:
 
     values: dict[str, float] = field(default_factory=dict)
     text: dict[str, str] = field(default_factory=dict)
+    # non-scalar payloads (lists, dicts) that must not enter the float registry
+    extra: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass

@@ -15,6 +15,7 @@ class State:
         self._status: dict[str, tuple[str, str]] = {}
         self._history: dict[str, deque[tuple[float, float]]] = defaultdict(deque)
         self._history_seconds = history_seconds
+        self._cores: list[float] = []
         self.last_update = 0.0
         self.sample_count = 0
 
@@ -24,12 +25,15 @@ class State:
         values: dict[str, float | None],
         text: dict[str, str],
         status: dict[str, tuple[str, str]],
+        cores: list[float] | None = None,
     ) -> None:
         now = time.time()
         with self._lock:
             self._values.update(values)
             self._text.update(text)
             self._status = dict(status)
+            if cores is not None:
+                self._cores = list(cores)
             self.last_update = now
             self.sample_count += 1
             cutoff = now - self._history_seconds
@@ -49,6 +53,11 @@ class State:
     def value(self, key: str) -> float | None:
         with self._lock:
             return self._values.get(key)
+
+    def cores(self) -> list[float]:
+        """Per-logical-core load, newest sample."""
+        with self._lock:
+            return list(self._cores)
 
     def history(self, key: str, seconds: float | None = None) -> list[tuple[float, float]]:
         with self._lock:

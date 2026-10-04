@@ -57,13 +57,12 @@ class SystemSource(Source):
     # ------------------------------------------------------------------ #
     def refresh(self) -> SourceReport | None:
         report = SourceReport()
-        values, text = report.values, report.text
 
         if psutil is not None:
-            self._fill_psutil(values, text)
+            self._fill_psutil(report)
             self.set_status(SourceStatus.OK, f"psutil {psutil.__version__}")
         else:
-            self._fill_fallback(values)
+            self._fill_fallback(report)
             self.set_status(SourceStatus.OK, "ctypes fallback (psutil отсутствует)")
 
         self._fill_process(report)
@@ -71,11 +70,13 @@ class SystemSource(Source):
         return report
 
     # ------------------------------------------------------------------ #
-    def _fill_psutil(self, values: dict, text: dict) -> None:
+    def _fill_psutil(self, report: SourceReport) -> None:
+        values = report.values
         per_core = psutil.cpu_percent(interval=None, percpu=True)
         if per_core:
             values["cpu_load"] = sum(per_core) / len(per_core)
             values["cpu_load_max"] = max(per_core)
+            report.extra["cpu_cores"] = [float(core) for core in per_core]
         values["cpu_cores"] = len(per_core) if per_core else float(psutil.cpu_count() or 0)
 
         try:
@@ -94,7 +95,8 @@ class SystemSource(Source):
         values["ram_total_mb"] = memory.total / 1048576.0
 
     # ------------------------------------------------------------------ #
-    def _fill_fallback(self, values: dict) -> None:
+    def _fill_fallback(self, report: SourceReport) -> None:
+        values = report.values
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
         idle = wintypes.FILETIME()

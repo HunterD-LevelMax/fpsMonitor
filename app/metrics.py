@@ -20,6 +20,7 @@ class Metric:
 METRICS: tuple[Metric, ...] = (
     # ---- frames -------------------------------------------------------
     Metric("fps", "FPS", "", "frames", 0, "#4ade80", True),
+    Metric("fps_avg", "Average FPS", "", "frames", 0, "#34d399"),
     Metric("fps_low", "1% low", "", "frames", 0, "#22c55e"),
     Metric("fps_low01", "0.1% low", "", "frames", 0, "#16a34a"),
     Metric("frametime", "Frame time", "ms", "frames", 2, "#a3e635", True),
@@ -34,6 +35,7 @@ METRICS: tuple[Metric, ...] = (
     Metric("cpu_temp", "CPU temp", "\u00b0C", "cpu", 0, "#f87171", True),
     Metric("cpu_clock", "CPU clock", "MHz", "cpu", 0, "#93c5fd"),
     Metric("cpu_power", "CPU power", "W", "cpu", 1, "#c084fc"),
+    Metric("cores", "Ядра ЦПУ", "%", "cpu", 0, "#6E8BFF"),
     # ---- gpu ----------------------------------------------------------
     Metric("gpu_load", "GPU", "%", "gpu", 0, "#38bdf8", True),
     Metric("gpu_temp", "GPU temp", "\u00b0C", "gpu", 0, "#fb923c", True),
@@ -53,7 +55,7 @@ METRIC_BY_KEY: dict[str, Metric] = {m.key: m for m in METRICS}
 
 # Re-skin to the dashboard palette (cool surfaces, one accent, semantic alerts)
 _PALETTE = {
-    "fps": "#3FD68C", "fps_low": "#2FB574", "fps_low01": "#249A63",
+    "fps": "#3FD68C", "fps_avg": "#7CE6A9", "fps_low": "#2FB574", "fps_low01": "#249A63",
     "frametime": "#A8E063", "frametime_min": "#C7F09A", "frametime_max": "#FF9F68",
     "frametime_display": "#5AC8FA", "stutters": "#FF7AB6", "frames_window": "#8B98AB",
     "frame_graph": "#6E8BFF",
@@ -71,7 +73,7 @@ METRICS = tuple(
 )
 # Russian labels; the internal keys stay English so configs and CSVs keep working
 _LABELS = {
-    "fps": "FPS", "fps_low": "1% low", "fps_low01": "0.1% low",
+    "fps": "FPS", "fps_avg": "Средний FPS", "fps_low": "1% low", "fps_low01": "0.1% low",
     "frametime": "Время кадра", "frametime_min": "Лучший кадр",
     "frametime_max": "Худший кадр", "frametime_display": "Кадр на экране",
     "stutters": "Статтеры", "frames_window": "Кадров в окне",
@@ -145,6 +147,7 @@ def value_color(key: str, value: float | None) -> str:
 OVERLAY_CHOICES: list[str] = [
     "frame_graph",
     "fps",
+    "fps_avg",
     "fps_low",
     "fps_low01",
     "frametime",
@@ -157,6 +160,7 @@ OVERLAY_CHOICES: list[str] = [
     "cpu_temp",
     "cpu_clock",
     "cpu_power",
+    "cores",
     "gpu_load",
     "gpu_temp",
     "gpu_vram",
