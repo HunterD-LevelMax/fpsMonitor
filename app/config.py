@@ -82,6 +82,7 @@ class Config:
     lhm_path: str = ""
     presentmon_path: str = ""
     presentmon_capture_all: bool = True
+    track_desktop: bool = False  # показывать FPS компоновщика (dwm.exe) на рабочем столе
 
     # ---------------------------------------------------------------- io ---
     @classmethod

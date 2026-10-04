@@ -47,6 +47,9 @@ SHELL_PROCESSES = {
     "textinputhost.exe",
 }
 
+# the Desktop Window Manager composites the desktop and reports presents of its own
+DWM_NAME = "dwm.exe"
+
 SESSION_NAME = "FpsMonitorCapture"
 KEEP_SECONDS = 60.0
 MAX_FRAMES_PER_CHAIN = 30000
@@ -209,13 +212,14 @@ class PresentMonSource(Source):
 
     def __init__(self, ctx: Context, vendor_dir: Path, sticky_seconds: float = 6.0,
                  fps_window: float = 1.0, low_window: float = 10.0,
-                 avg_window: float = 10.0) -> None:
+                 avg_window: float = 10.0, track_desktop: bool = False) -> None:
         super().__init__(ctx)
         self.vendor_dir = Path(vendor_dir)
         self.sticky_seconds = sticky_seconds
         self.fps_window = fps_window
         self.low_window = low_window
         self.avg_window = avg_window
+        self.track_desktop = track_desktop
 
         self.exe: Path | None = self._locate()
         self.session_name = SESSION_NAME
@@ -558,6 +562,10 @@ class PresentMonSource(Source):
     def set_pinned(self, pid: int | None) -> None:
         self._pinned_pid = pid
 
+    def set_track_desktop(self, enabled: bool) -> None:
+        """Follow the Desktop Window Manager (dwm.exe) when nothing else is in front."""
+        self.track_desktop = bool(enabled)
+
     def pinned(self) -> int | None:
         return self._pinned_pid
 
@@ -616,6 +624,15 @@ class PresentMonSource(Source):
 
         if self._active_pid is not None:
             return self._active_pid
+
+        # desktop mode: the Desktop Window Manager is the "app" when nothing
+        # else is in front, so the user can watch the desktop's own frame rate
+        if self.track_desktop:
+            for pid in present_pids:
+                if (names.get(pid, "") or "").lower() == DWM_NAME:
+                    self._active_pid = pid
+                    self._active_seen = now
+                    return pid
 
         # Nothing in front: fall back to the hardest-working presenter that is
         # not a shell window, which is usually the running game.

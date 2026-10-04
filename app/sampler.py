@@ -44,6 +44,7 @@ class Sampler(threading.Thread):
                 fps_window=self.config.fps_window_s,
                 low_window=self.config.low_fps_window_s,
                 avg_window=self.config.avg_fps_window_s,
+                track_desktop=self.config.track_desktop,
             ),
             SystemSource(self.ctx),
         ]

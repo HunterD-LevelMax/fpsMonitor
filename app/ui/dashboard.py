@@ -601,6 +601,13 @@ class Dashboard:
                           self._lhm_var, self._on_lhm_toggle,
                           hint="LibreHardwareMonitor, требует прав администратора",
                           fill=theme.SURFACE).pack(fill="x")
+        self._desktop_var = tk.BooleanVar(value=self.cfg.track_desktop)
+        widgets.SwitchRow(sources.content,
+                          "FPS рабочего стола (dwm.exe)",
+                          self._desktop_var, self._on_desktop_toggle,
+                          hint="частота компоновки рабочего стола; видна, только "
+                               "когда он перерисовывается",
+                          fill=theme.SURFACE).pack(fill="x", pady=(theme.SPACE_1, 0))
         widgets.WrapLabel(
             sources.content,
             "FPS читается через PresentMon (ETW), метрики NVIDIA — через nvidia-smi "
@@ -1092,6 +1099,13 @@ class Dashboard:
     def _on_lhm_toggle(self) -> None:
         self.cfg.lhm_autostart = self._lhm_var.get()
         self.cfg.save()
+
+    def _on_desktop_toggle(self) -> None:
+        self.cfg.track_desktop = self._desktop_var.get()
+        self.cfg.save()
+        source = self.sampler.source("presentmon")
+        if source is not None and hasattr(source, "set_track_desktop"):
+            source.set_track_desktop(self.cfg.track_desktop)
 
     def _on_overlay_graph_window(self, raw: str) -> None:
         try:
